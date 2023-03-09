@@ -1,0 +1,94 @@
+version: '3.3'
+
+services:
+  app:
+    build:
+      context: .
+    image: mlops_app
+   
+    command: python3 server.py
+   
+    volumes:
+      - .:/app
+    ports:
+      - 5000:5000
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+      - mongodb
+
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+    ports: 
+      - 5432:5432
+
+  redis:
+    image: redis:7-alpine
+
+  celery_worker:
+    
+    image: mlops_app
+    command: /app/celery/celeryworker.sh
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+      - app
+      - mongodb
+
+  celery_beat:
+   
+    image: mlops_app
+    command: /app/celery/celerybeat.sh
+    volumes:
+      - .:/app
+
+    env_file:
+      - .env
+
+    depends_on:
+      - redis
+      - db
+      - app
+      - mongodb
+
+  flower:
+
+    image: mlops_app
+    command: /app/celery/celeryflower.sh
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+   
+    ports:
+      - 5557:5555
+    depends_on:
+      - redis
+      - db 
+
+  mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data:/data/db
+  
+volumes:
+    postgres_data: 
+
+    mongodb_data: 
